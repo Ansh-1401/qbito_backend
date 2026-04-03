@@ -15,7 +15,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 
 @Configuration
 @EnableWebSecurity
@@ -37,29 +39,24 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Public endpoints
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/restaurants/**").permitAll()
-                .requestMatchers("/api/menu/**").permitAll()
-                .requestMatchers("/api/orders/**").permitAll()
-                .requestMatchers("/ws/**").permitAll()
-                .requestMatchers("/api/admin/menu/**").permitAll()
-                .requestMatchers("/media/**").permitAll()
-                .requestMatchers("/api/media/**").permitAll()
-                .requestMatchers("/api/reviews/restaurant/**").permitAll()
-
-                // Protected: Super Admin only
+                // Allow health check and root explicitly
+                .requestMatchers("/", "/api/health").permitAll()
+                // Permit all listed public API paths
+                .requestMatchers("/api/auth/**", "/api/restaurants/**", "/api/menu/**", "/api/orders/**", "/ws/**", "/api/admin/menu/**", "/media/**", "/api/media/**", "/api/reviews/restaurant/**").permitAll()
+                // Protected areas
                 .requestMatchers("/api/superadmin/**").hasRole("SUPER_ADMIN")
-
-                // Protected: Restaurant Admin
                 .requestMatchers("/api/restaurant-admin/**").hasAnyRole("RESTAURANT_ADMIN", "SUPER_ADMIN")
-
-                // Everything else requires auth
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    @Bean
+    public UserDetailsService userDetailsService() {
+        // We use custom JWT Auth, but providing this bean stops Spring from generating a random password
+        return new InMemoryUserDetailsManager();
     }
 
     @Bean
